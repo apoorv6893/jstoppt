@@ -1,54 +1,40 @@
 const fs = require("fs");
-const PptxGenJS = require("pptxgenjs");
+const path = require("path");
+const { spawnSync } = require("child_process");
 
-async function run() {
-    const inputFile = process.argv[2];
-    const outputFile = process.argv[3];
+const inputFile = process.argv[2];
+const outputFile = process.argv[3];
 
-    let code = fs.readFileSync(inputFile, "utf8");
+let code = fs.readFileSync(inputFile, "utf8");
 
-    // Remove ALL require(...) lines
-    code = code.replace(
-        /^.*require\s*\(.*\).*$/gm,
-        ""
-    );
+// Replace the final writeFile path
+code = code.replace(
+    /pres\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;/,
+    `pres.writeFile({ fileName: "${outputFile}" });`
+);
 
-    // Remove ALL writeFile(...) calls
-    code = code.replace(
-        /^.*writeFile\s*\(.*$/gm,
-        ""
-    );
+const runtimeFile = path.join(
+    path.dirname(inputFile),
+    "runtime.js"
+);
 
-    const wrappedCode = `
-        const pptxgen = PptxGenJS;
+fs.writeFileSync(runtimeFile, code);
 
-        ${code}
+const result = spawnSync(
+    "node",
+    [runtimeFile],
+    {
+        encoding: "utf8",
+        cwd: process.cwd()
+    }
+);
 
-        if (typeof pres !== "undefined") {
-            await pres.writeFile({
-                fileName: "${outputFile}"
-            });
-        } else if (typeof pptx !== "undefined") {
-            await pptx.writeFile({
-                fileName: "${outputFile}"
-            });
-        } else {
-            throw new Error("No presentation object found");
-        }
-    `;
-
-    const AsyncFunction =
-        Object.getPrototypeOf(async function(){}).constructor;
-
-    const fn = new AsyncFunction(
-        "PptxGenJS",
-        wrappedCode
-    );
-
-    await fn(PptxGenJS);
+if (result.stdout) {
+    console.log(result.stdout);
 }
 
-run().catch(err => {
-    console.error(err);
-    process.exit(1);
-});
+if (result.stderr) {
+    console.error(result.stderr);
+}
+
+process.exit(result.status || 0);
