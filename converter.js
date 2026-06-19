@@ -1,40 +1,34 @@
 const fs = require("fs");
-const path = require("path");
-const { spawnSync } = require("child_process");
+const PptxGenJS = require("pptxgenjs");
 
-const inputFile = process.argv[2];
-const outputFile = process.argv[3];
+async function run() {
+    const inputFile = process.argv[2];
+    const outputFile = process.argv[3];
 
-let code = fs.readFileSync(inputFile, "utf8");
+    const code = fs.readFileSync(inputFile, "utf8");
 
-// Replace the final writeFile path
-code = code.replace(
-    /pres\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;/,
-    `pres.writeFile({ fileName: "${outputFile}" });`
-);
+    const wrappedCode = `
+        const pptx = new PptxGenJS();
 
-const runtimeFile = path.join(
-    path.dirname(inputFile),
-    "runtime.js"
-);
+        ${code}
 
-fs.writeFileSync(runtimeFile, code);
+        await pptx.writeFile({
+            fileName: "${outputFile}"
+        });
+    `;
 
-const result = spawnSync(
-    "node",
-    [runtimeFile],
-    {
-        encoding: "utf8",
-        cwd: process.cwd()
-    }
-);
+    const AsyncFunction =
+        Object.getPrototypeOf(async function(){}).constructor;
 
-if (result.stdout) {
-    console.log(result.stdout);
+    const fn = new AsyncFunction(
+        "PptxGenJS",
+        wrappedCode
+    );
+
+    await fn(PptxGenJS);
 }
 
-if (result.stderr) {
-    console.error(result.stderr);
-}
-
-process.exit(result.status || 0);
+run().catch(err => {
+    console.error(err);
+    process.exit(1);
+});
