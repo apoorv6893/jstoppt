@@ -3,28 +3,20 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+st.set_page_config(
+    page_title="JavaScript → PowerPoint Converter",
+    layout="wide"
+)
+
 @st.cache_resource
 def install_dependencies():
-    result = subprocess.run(
-        ["npm", "install", "pptxgenjs"],
-        capture_output=True,
-        text=True
-    )
-
-    return result.returncode == 0
-
-install_dependencies()
-
-st.set_page_config(page_title="JS to PPTX", layout="wide")
-
-@st.cache_resource
-def install_deps():
     try:
         result = subprocess.run(
             ["npm", "list", "pptxgenjs"],
             capture_output=True,
             text=True
         )
+
         if result.returncode != 0:
             subprocess.run(
                 ["npm", "install", "pptxgenjs"],
@@ -32,15 +24,21 @@ def install_deps():
                 capture_output=True,
                 text=True
             )
-    except Exception as e:
-        st.warning(f"npm install issue: {e}")
 
-install_deps()
+        return True
+
+    except Exception as e:
+        st.error(f"Dependency installation failed:\n{e}")
+        return False
+
+install_dependencies()
 
 st.title("JavaScript → PowerPoint Converter")
 
 st.markdown("""
-Paste PptxGenJS code such as:
+Paste PptxGenJS code below.
+
+Example:
 
 ```javascript
 let slide = pptx.addSlide();
@@ -55,70 +53,93 @@ slide.addText("Hello World", {
 ```
 """)
 
-js_code = st.text_area("JavaScript Code", height=500)
+uploaded_file = st.file_uploader(
+    "Upload JavaScript File",
+    type=["js"]
+)
 
-filename = st.text_input("Output Filename", "presentation")
+js_code = ""
 
-if st.button("Generate PPTX"):
+if uploaded_file:
+    js_code = uploaded_file.read().decode("utf-8")
+
+js_code = st.text_area(
+    "JavaScript Code",
+    value=js_code,
+    height=500
+)
+
+filename = st.text_input(
+    "Output Filename",
+    value="presentation"
+)
+
+if st.button("🚀 Generate PPTX", use_container_width=True):
 
     if not js_code.strip():
         st.error("Please enter JavaScript code.")
         st.stop()
 
-    converter_js = """
-const fs = require("fs");
-const PptxGenJS = require("pptxgenjs");
-
-async function run() {
-    const inputFile = process.argv[2];
-    const outputFile = process.argv[3];
-
-    const code = fs.readFileSync(inputFile, "utf8");
-
-    const wrappedCode = `
-        const pptx = new PptxGenJS();
-        ${code}
-        await pptx.writeFile({ fileName: "${outputFile}" });
-    `;
-
-    const fn = new Function("PptxGenJS", wrappedCode);
-    await fn(PptxGenJS);
-}
-
-run().catch(err => {
-    console.error(err);
-    process.exit(1);
-});
-"""
-
-    Path("converter.js").write_text(converter_js, encoding="utf-8")
+    if not Path("converter.js").exists():
+        st.error("converter.js not found in repository root.")
+        st.stop()
 
     with tempfile.TemporaryDirectory() as tmp:
 
         js_file = Path(tmp) / "input.js"
         ppt_file = Path(tmp) / "output.pptx"
 
-        js_file.write_text(js_code, encoding="utf-8")
+        js_file.write_text(
+            js_code,
+            encoding="utf-8"
+        )
 
         result = subprocess.run(
-            ["node", "converter.js", str(js_file), str(ppt_file)],
+            [
+                "node",
+                "converter.js",
+                str(js_file),
+                str(ppt_file)
+            ],
             capture_output=True,
             text=True
         )
 
         if result.returncode != 0:
-            st.error("Generation failed")
-            st.code(result.stderr)
+
+            st.error("PowerPoint generation failed")
+
+            if result.stderr:
+                st.code(result.stderr)
+
+            if result.stdout:
+                st.code(result.stdout)
+
             st.stop()
 
         if not ppt_file.exists():
+
             st.error("PPT file was not generated.")
+
+            if result.stdout:
+                st.code(result.stdout)
+
             st.stop()
 
+        st.success("PowerPoint generated successfully!")
+
         with open(ppt_file, "rb") as f:
+
             st.download_button(
-                "Download PPTX",
+                label="📥 Download PPTX",
                 data=f.read(),
                 file_name=f"{filename}.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                use_container_width=True
             )
+
+        with st.expander("Execution Logs"):
+            if result.stdout:
+                st.code(result.stdout)
+            else:
+                st.write("No logs generated.")
