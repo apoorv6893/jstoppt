@@ -66,7 +66,38 @@ if st.button("🚀 Generate PPTX"):
 
         js_file = Path(tmp) / "input.js"
         ppt_file = Path(tmp) / f"{filename}.pptx"
+# remove start
+import re
 
+cleaned_code = js_code
+
+# Remove import
+cleaned_code = re.sub(
+    r'const\s+pptxgen\s*=\s*require\s*\(\s*[\'"]pptxgenjs[\'"]\s*\)\s*;?',
+    '',
+    cleaned_code
+)
+
+# Replace presentation creation
+cleaned_code = re.sub(
+    r'const\s+pres\s*=\s*new\s+pptxgen\s*\(\s*\)\s*;?',
+    'const pres = pptx;',
+    cleaned_code
+)
+
+# Remove final writeFile block
+cleaned_code = re.sub(
+    r'pres\.writeFile\s*\([\s\S]*?$',
+    '',
+    cleaned_code,
+    flags=re.MULTILINE
+)
+
+js_file.write_text(
+    cleaned_code,
+    encoding="utf-8"
+)
+# remove end
         js_file.write_text(
             js_code,
             encoding="utf-8"
