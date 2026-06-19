@@ -1,0 +1,6 @@
+{
+  "name": "js-to-ppt",
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
