@@ -35,24 +35,6 @@ install_dependencies()
 
 st.title("JavaScript → PowerPoint Converter")
 
-st.markdown("""
-Paste PptxGenJS code below.
-
-Example:
-
-```javascript
-let slide = pptx.addSlide();
-
-slide.addText("Hello World", {
-    x: 1,
-    y: 1,
-    w: 4,
-    h: 1,
-    fontSize: 24
-});
-```
-""")
-
 uploaded_file = st.file_uploader(
     "Upload JavaScript File",
     type=["js"]
@@ -74,20 +56,16 @@ filename = st.text_input(
     value="presentation"
 )
 
-if st.button("🚀 Generate PPTX", use_container_width=True):
+if st.button("🚀 Generate PPTX"):
 
     if not js_code.strip():
         st.error("Please enter JavaScript code.")
         st.stop()
 
-    if not Path("converter.js").exists():
-        st.error("converter.js not found in repository root.")
-        st.stop()
-
     with tempfile.TemporaryDirectory() as tmp:
 
         js_file = Path(tmp) / "input.js"
-        ppt_file = Path(tmp) / "output.pptx"
+        ppt_file = Path(tmp) / f"{filename}.pptx"
 
         js_file.write_text(
             js_code,
@@ -106,40 +84,24 @@ if st.button("🚀 Generate PPTX", use_container_width=True):
         )
 
         if result.returncode != 0:
-
             st.error("PowerPoint generation failed")
-
-            if result.stderr:
-                st.code(result.stderr)
-
-            if result.stdout:
-                st.code(result.stdout)
-
+            st.code(result.stderr)
             st.stop()
 
         if not ppt_file.exists():
-
-            st.error("PPT file was not generated.")
-
+            st.error("PPT file was not generated")
             if result.stdout:
                 st.code(result.stdout)
-
             st.stop()
 
-        st.success("PowerPoint generated successfully!")
-
         with open(ppt_file, "rb") as f:
-
             st.download_button(
-                label="📥 Download PPTX",
+                "📥 Download PPTX",
                 data=f.read(),
                 file_name=f"{filename}.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                use_container_width=True
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
 
-        with st.expander("Execution Logs"):
-            if result.stdout:
+        if result.stdout:
+            with st.expander("Logs"):
                 st.code(result.stdout)
-            else:
-                st.write("No logs generated.")
