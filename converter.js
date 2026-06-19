@@ -1,5 +1,4 @@
 const fs = require("fs");
-const path = require("path");
 const { spawnSync } = require("child_process");
 
 async function run() {
@@ -8,30 +7,30 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
-    // Replace any writeFile call with our output path
     code = code.replace(
         /\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
         `.writeFile({ fileName: "${outputFile}" });`
     );
 
-    const generatedScript = path.join(
-        path.dirname(inputFile),
-        "generated.js"
-    );
+    const generatedFile = "generated_runtime.js";
 
     fs.writeFileSync(
-        generatedScript,
+        generatedFile,
         code,
         "utf8"
     );
 
     const result = spawnSync(
         "node",
-        [generatedScript],
+        [generatedFile],
         {
             encoding: "utf8"
         }
     );
+
+    try {
+        fs.unlinkSync(generatedFile);
+    } catch {}
 
     if (result.stdout) {
         console.log(result.stdout);
