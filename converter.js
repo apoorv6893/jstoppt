@@ -7,15 +7,15 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
-    // Remove pptxgenjs import from uploaded JS
+    // Remove ALL require(...) lines
     code = code.replace(
-        /const\s+.*?\s*=\s*require\s*\(\s*["']pptxgenjs["']\s*\)\s*;?/g,
+        /^.*require\s*\(.*\).*$/gm,
         ""
     );
 
-    // Replace ANY writeFile(...) call
+    // Remove ALL writeFile(...) calls
     code = code.replace(
-        /\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
+        /^.*writeFile\s*\(.*$/gm,
         ""
     );
 
@@ -33,9 +33,7 @@ async function run() {
                 fileName: "${outputFile}"
             });
         } else {
-            throw new Error(
-                "Could not find presentation object. Expected 'pres' or 'pptx'."
-            );
+            throw new Error("No presentation object found");
         }
     `;
 
