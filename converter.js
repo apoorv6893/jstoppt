@@ -1,5 +1,4 @@
 const fs = require("fs");
-const path = require("path");
 const PptxGenJS = require("pptxgenjs");
 
 async function run() {
@@ -8,24 +7,26 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
-    // Replace the import
+    // Remove any pptxgenjs imports
     code = code.replace(
-        /const\s+pptxgen\s*=\s*require\(["']pptxgenjs["']\);?/g,
-        "const pptxgen = PptxGenJS;"
+        /const\s+.*?\s*=\s*require\s*\(\s*["']pptxgenjs["']\s*\)\s*;?/g,
+        ""
     );
 
-    // Replace the final writeFile call
+    // Replace hardcoded output file
     code = code.replace(
         /pres\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
         `await pres.writeFile({ fileName: "${outputFile}" });`
     );
 
     const AsyncFunction =
-        Object.getPrototypeOf(async function(){}).constructor;
+        Object.getPrototypeOf(async function () {}).constructor;
 
     const fn = new AsyncFunction(
         "PptxGenJS",
-        code
+        `
+${code}
+`
     );
 
     await fn(PptxGenJS);
