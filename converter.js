@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 const PptxGenJS = require("pptxgenjs");
 
 async function run() {
@@ -7,56 +8,24 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
-    // Remove imports
+    // Replace the import
     code = code.replace(
         /const\s+pptxgen\s*=\s*require\(["']pptxgenjs["']\);?/g,
-        ""
+        "const pptxgen = PptxGenJS;"
     );
 
+    // Replace the final writeFile call
     code = code.replace(
-        /const\s+PptxGenJS\s*=\s*require\(["']pptxgenjs["']\);?/g,
-        ""
+        /pres\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
+        `await pres.writeFile({ fileName: "${outputFile}" });`
     );
-
-    // Remove presentation creation
-    code = code.replace(
-        /const\s+pres\s*=\s*new\s+pptxgen\s*\(\s*\)\s*;?/g,
-        ""
-    );
-
-    code = code.replace(
-        /const\s+pptx\s*=\s*new\s+PptxGenJS\s*\(\s*\)\s*;?/g,
-        ""
-    );
-
-    // Remove writeFile calls
-    code = code.replace(
-        /await\s+.*?writeFile\s*\([^)]*\)\s*;?/gs,
-        ""
-    );
-
-    code = code.replace(
-        /.*?writeFile\s*\([^)]*\)\s*;?/gs,
-        ""
-    );
-
-    const wrappedCode = `
-        const pptx = new PptxGenJS();
-        const pres = pptx;
-
-        ${code}
-
-        await pptx.writeFile({
-            fileName: "${outputFile}"
-        });
-    `;
 
     const AsyncFunction =
         Object.getPrototypeOf(async function(){}).constructor;
 
     const fn = new AsyncFunction(
         "PptxGenJS",
-        wrappedCode
+        code
     );
 
     await fn(PptxGenJS);
