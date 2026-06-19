@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { spawnSync } = require("child_process");
+const PptxGenJS = require("pptxgenjs");
 
 async function run() {
     const inputFile = process.argv[2];
@@ -7,40 +7,47 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
+    // Remove pptxgenjs import from uploaded JS
+    code = code.replace(
+        /const\s+.*?\s*=\s*require\s*\(\s*["']pptxgenjs["']\s*\)\s*;?/g,
+        ""
+    );
+
+    // Replace ANY writeFile(...) call
     code = code.replace(
         /\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
-        `.writeFile({ fileName: "${outputFile}" });`
+        ""
     );
 
-    const generatedFile = "generated_runtime.js";
+    const wrappedCode = `
+        const pptxgen = PptxGenJS;
 
-    fs.writeFileSync(
-        generatedFile,
-        code,
-        "utf8"
-    );
+        ${code}
 
-    const result = spawnSync(
-        "node",
-        [generatedFile],
-        {
-            encoding: "utf8"
+        if (typeof pres !== "undefined") {
+            await pres.writeFile({
+                fileName: "${outputFile}"
+            });
+        } else if (typeof pptx !== "undefined") {
+            await pptx.writeFile({
+                fileName: "${outputFile}"
+            });
+        } else {
+            throw new Error(
+                "Could not find presentation object. Expected 'pres' or 'pptx'."
+            );
         }
+    `;
+
+    const AsyncFunction =
+        Object.getPrototypeOf(async function(){}).constructor;
+
+    const fn = new AsyncFunction(
+        "PptxGenJS",
+        wrappedCode
     );
 
-    try {
-        fs.unlinkSync(generatedFile);
-    } catch {}
-
-    if (result.stdout) {
-        console.log(result.stdout);
-    }
-
-    if (result.stderr) {
-        console.error(result.stderr);
-    }
-
-    process.exit(result.status || 0);
+    await fn(PptxGenJS);
 }
 
 run().catch(err => {
