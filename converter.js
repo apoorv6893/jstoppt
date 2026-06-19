@@ -1,5 +1,6 @@
 const fs = require("fs");
-const PptxGenJS = require("pptxgenjs");
+const path = require("path");
+const { spawnSync } = require("child_process");
 
 async function run() {
     const inputFile = process.argv[2];
@@ -7,31 +8,40 @@ async function run() {
 
     let code = fs.readFileSync(inputFile, "utf8");
 
-    // Remove any pptxgenjs imports
+    // Replace any writeFile call with our output path
     code = code.replace(
-        /const\s+.*?\s*=\s*require\s*\(\s*["']pptxgenjs["']\s*\)\s*;?/g,
-        ""
+        /\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
+        `.writeFile({ fileName: "${outputFile}" });`
     );
 
-    // Replace hardcoded output file
-    code = code.replace(
-        /pres\.writeFile\s*\(\s*\{[\s\S]*?\}\s*\)\s*;?/g,
-        `await pres.writeFile({ fileName: "${outputFile}" });`
+    const generatedScript = path.join(
+        path.dirname(inputFile),
+        "generated.js"
     );
 
-    const AsyncFunction =
-        Object.getPrototypeOf(async function () {}).constructor;
-
-    const fn = new AsyncFunction(
-        "PptxGenJS",
-        `
-${code}
-`
+    fs.writeFileSync(
+        generatedScript,
+        code,
+        "utf8"
     );
 
-    await fn(PptxGenJS);
+    const result = spawnSync(
+        "node",
+        [generatedScript],
+        {
+            encoding: "utf8"
+        }
+    );
 
-    console.log("PPT generated successfully");
+    if (result.stdout) {
+        console.log(result.stdout);
+    }
+
+    if (result.stderr) {
+        console.error(result.stderr);
+    }
+
+    process.exit(result.status || 0);
 }
 
 run().catch(err => {
