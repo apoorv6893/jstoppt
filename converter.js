@@ -1,5 +1,4 @@
 const fs = require("fs");
-const path = require("path");
 const PptxGenJS = require("pptxgenjs");
 
 async function run() {
@@ -8,14 +7,26 @@ async function run() {
 
     const code = fs.readFileSync(inputFile, "utf8");
 
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+
     const wrappedCode = `
         const pptx = new PptxGenJS();
+
         ${code}
-        pptx.writeFile({ fileName: "${outputFile}" });
+
+        await pptx.writeFile({
+            fileName: "${outputFile}"
+        });
     `;
 
-    const fn = new Function("PptxGenJS", wrappedCode);
+    const fn = new AsyncFunction(
+        "PptxGenJS",
+        wrappedCode
+    );
+
     await fn(PptxGenJS);
+
+    console.log("PPT generated successfully");
 }
 
 run().catch(err => {
