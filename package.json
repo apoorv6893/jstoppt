@@ -1,5 +1,6 @@
 {
-  "name": "js-to-ppt",
+  "name": "jstoppt",
+  "version": "1.0.0",
   "dependencies": {
     "pptxgenjs": "^3.12.0"
   }
