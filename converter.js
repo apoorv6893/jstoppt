@@ -1,4 +1,5 @@
-console.log("NEW CONVERTER LOADED");
+console.log("=== NEW CONVERTER LOADED ===");
+
 const fs = require("fs");
 const PptxGenJS = require("pptxgenjs");
 
@@ -6,10 +7,28 @@ async function run() {
     const inputFile = process.argv[2];
     const outputFile = process.argv[3];
 
-    const code = fs.readFileSync(inputFile, "utf8");
+    let code = fs.readFileSync(inputFile, "utf8");
 
-    const AsyncFunction =
-        Object.getPrototypeOf(async function() {}).constructor;
+    // Remove common lines users paste from full examples
+    code = code.replace(
+        /const\s+pptx\s*=\s*new\s+PptxGenJS\s*\(\s*\)\s*;?/g,
+        ""
+    );
+
+    code = code.replace(
+        /let\s+pptx\s*=\s*new\s+PptxGenJS\s*\(\s*\)\s*;?/g,
+        ""
+    );
+
+    code = code.replace(
+        /await\s+pptx\.writeFile\s*\([^)]*\)\s*;?/g,
+        ""
+    );
+
+    code = code.replace(
+        /pptx\.writeFile\s*\([^)]*\)\s*;?/g,
+        ""
+    );
 
     const wrappedCode = `
         const pptx = new PptxGenJS();
@@ -20,6 +39,13 @@ async function run() {
             fileName: "${outputFile}"
         });
     `;
+
+    console.log("===== EXECUTING CODE =====");
+    console.log(wrappedCode);
+
+    const AsyncFunction = Object.getPrototypeOf(
+        async function () {}
+    ).constructor;
 
     const fn = new AsyncFunction(
         "PptxGenJS",
@@ -32,6 +58,7 @@ async function run() {
 }
 
 run().catch(err => {
+    console.error("===== ERROR =====");
     console.error(err);
     process.exit(1);
 });
