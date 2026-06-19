@@ -3,6 +3,18 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+@st.cache_resource
+def install_dependencies():
+    result = subprocess.run(
+        ["npm", "install", "pptxgenjs"],
+        capture_output=True,
+        text=True
+    )
+
+    return result.returncode == 0
+
+install_dependencies()
+
 st.set_page_config(page_title="JS to PPTX", layout="wide")
 
 @st.cache_resource
