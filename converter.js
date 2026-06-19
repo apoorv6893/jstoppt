@@ -1,3 +1,4 @@
+console.log("NEW CONVERTER LOADED");
 const fs = require("fs");
 const PptxGenJS = require("pptxgenjs");
 
@@ -7,7 +8,8 @@ async function run() {
 
     const code = fs.readFileSync(inputFile, "utf8");
 
-    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+    const AsyncFunction =
+        Object.getPrototypeOf(async function() {}).constructor;
 
     const wrappedCode = `
         const pptx = new PptxGenJS();
